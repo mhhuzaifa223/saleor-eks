@@ -6,50 +6,65 @@ I also worked with Helm, Terraform, GitHub Actions, and monitoring tools to mana
 
 ## Architecture
 
-The project runs on Amazon EKS, where Saleor's dashboard, API, and background worker run as separate components. The API and worker are configured to connect to Amazon RDS for PostgreSQL, while Valkey supports caching and background tasks.
+I deployed Saleor on Amazon EKS and used an AWS Application Load Balancer (ALB) to handle incoming traffic. The ALB routes requests to the Saleor dashboard, API, and monitoring services based on the domain name.
 
-I also set up Prometheus and Grafana to monitor the application environment, with Alertmanager sending email notifications when alerts are triggered.
+I also configured HTTPS using an AWS Certificate Manager (ACM) certificate, with HTTP requests redirected to HTTPS. Amazon RDS provides the PostgreSQL database, while Valkey supports caching and background tasks.
+
+Prometheus and Grafana help monitor the environment, and Alertmanager sends email notifications when configured alerts are triggered.
 
 ### Architecture Diagram
 
 ```mermaid
 flowchart TB
-    User["User / Browser"]
+    User["Users / Browser"]
 
     subgraph AWS["AWS Cloud"]
+        ALB["Application Load Balancer<br/>HTTP → HTTPS"]
+
         subgraph EKS["Amazon EKS Cluster"]
-            subgraph Saleor["Saleor Application"]
+            Ingress["Kubernetes Ingress<br/>Host-based routing"]
+
+            subgraph App["Saleor Application"]
                 Dashboard["Saleor Dashboard"]
                 API["Saleor API"]
                 Worker["Background Worker"]
-                Valkey[("Valkey")]
+                Valkey[("Valkey Cache")]
+            end
+
+            subgraph Monitoring["Monitoring"]
+                Proxy["Monitoring Proxy"]
+                Prometheus["Prometheus"]
+                Grafana["Grafana"]
+                Alertmanager["Alertmanager"]
             end
         end
 
-        RDS[("Amazon RDS for PostgreSQL")]
-
-        subgraph Monitoring["Monitoring Stack"]
-            Prometheus["Prometheus"]
-            Grafana["Grafana"]
-            Alertmanager["Alertmanager"]
-        end
+        RDS[("Amazon RDS<br/>PostgreSQL")]
+        ACM["AWS Certificate Manager<br/>TLS Certificate"]
     end
 
-    User --> Dashboard
-    User --> API
+    User --> ALB
+    ACM -. "HTTPS certificate" .-> ALB
+    ALB --> Ingress
+
+    Ingress -->|"dashboard.mhhuzaifa.com"| Dashboard
+    Ingress -->|"api.mhhuzaifa.com"| API
+    Ingress -->|"grafana / alerts domains"| Proxy
+
     Dashboard --> API
     API --> RDS
     Worker --> RDS
     API --> Valkey
     Worker --> Valkey
 
+    Proxy --> Grafana
     Prometheus --> Grafana
     Prometheus --> Alertmanager
     Alertmanager --> Email["Email Notifications"]
 ```
 ## Tools & Technologies
 
-- **AWS:** Amazon EKS, Amazon RDS, EC2, EBS
+- **AWS:** Amazon EKS, Application Load Balancer (ALB), AWS Certificate Manager (ACM), Amazon RDS, EC2, EBS
 - **Containers & Orchestration:** Docker, Kubernetes
 - **Deployment:** Helm
 - **Infrastructure as Code:** Terraform
