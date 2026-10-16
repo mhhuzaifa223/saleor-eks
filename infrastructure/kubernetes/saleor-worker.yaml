@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saleor-worker
+  namespace: saleor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: saleor-worker
+  template:
+    metadata:
+      labels:
+        app: saleor-worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/saleor/saleor:3.23
+          command: ["celery"]
+          args: ["--app=saleor.celeryconf:app", "worker", "--loglevel=info"]
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: saleor-db-credentials
+                  key: password
+            - name: DATABASE_URL
+              value: "postgres://saleoradmin:$(DB_PASSWORD)@saleor-postgres.cqbak4yiaywf.us-east-1.rds.amazonaws.com:5432/saleor?sslmode=require"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: saleor-app-credentials
+                  key: secret-key
+            - name: CACHE_URL
+              value: "redis://cache:6379/0"
+            - name: CELERY_BROKER_URL
+              value: "redis://cache:6379/0"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

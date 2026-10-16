@@ -1,0 +1,22 @@
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials
+secrets/
+
+# Database backups
+*.sql
+*.dump
+*.bak
+
+# Terrraform State
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Local and temporary files
+*.log
+.DS_Store
